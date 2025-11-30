@@ -2,8 +2,9 @@ import jwt
 from functools import wraps
 from flask import request, jsonify
 from project.models.user import User
+import os
 
-SECRET_KEY = "Boombaclaut"
+SECRET_KEY = os.getenv("SECRET_KEY")
 
 def verify_access_token(auth_header):
     """Extract token from 'Bearer <token>' and return user_id."""
