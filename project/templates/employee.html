@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Employees</title>
+    <style>
+        th {
+            cursor: pointer; /* Indicates headers are clickable */
+        }
+    </style>
+</head>
+<body>
+
+<h1>Employee Manager</h1>
+
+<h3>Add Employee</h3>
+Name: <input id="newName">
+Age: <input id="newAge" type="number">
+Department: <input id="newDept">
+<button onclick="addEmployee()">Add</button>
+
+<hr>
+
+<h3>Search Employee by ID</h3>
+<p style="font-size: 0.9em; color: gray;">
+    This uses the single-employee API endpoint (e.g., `/employees/1`)
+</p>
+ID: <input id="idSearchInput" type="number">
+<button onclick="getEmployeeByID()">Fetch Employee</button>
+<div id="idSearchResult" style="margin-top: 10px; padding: 10px; border: 1px solid #ccc;">
+    Results will appear here.
+</div>
+
+<hr>
+
+<h3>Filter Employees</h3>
+Search (Name/Dept): <input id="searchInput">
+Department:
+<select id="departmentFilter">
+    <option value="">All</option>
+</select>
+
+<button onclick="setPage(1)">Apply Filters / Search</button>
+
+<hr>
+
+<table border="1" width="100%">
+    <thead>
+        <tr>
+            <th id="sort-id" onclick="setSort('id')">ID</th>
+            <th id="sort-name" onclick="setSort('name')">Name</th>
+            <th id="sort-age" onclick="setSort('age')">Age</th>
+            <th id="sort-department" onclick="setSort('department')">Department</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody id="employeeBody"></tbody>
+</table>
+
+<div id="pagination" style="margin-top: 20px;"></div>
+
+
+<script>
+
+// GLOBAL STATE (FIX 1: Set limit and ensure correct variable names)
+let sortBy = "id";
+let sortOrder = "asc";
+let page = 1;
+let limit = 5; // Display 5 items per page
+
+// UPDATE SORT (FIX 3: Modified to call updateHeaderArrows)
+function setSort(col) {
+    if (sortBy === col) {
+        sortOrder = sortOrder === "asc" ? "desc" : "asc";
+    } else {
+        sortBy = col;
+        sortOrder = "asc";
+    }
+    loadEmployees();
+}
+
+// FIX 3: New function to update the visual sort indicators
+function updateHeaderArrows() {
+    // 1. Reset all headers
+    document.querySelectorAll('th[id^="sort-"]').forEach(th => {
+        // Remove existing arrows
+        th.innerHTML = th.textContent.replace(' ▲', '').replace(' ▼', '');
+    });
+
+    // 2. Add arrow to the current sort column
+    const header = document.getElementById(`sort-${sortBy}`);
+    if (header) {
+        const arrow = sortOrder === 'asc' ? ' ▲' : ' ▼';
+        header.innerHTML = header.textContent + arrow;
+    }
+}
+
+// LOAD DEPARTMENTS FOR FILTER DROPDOWN
+async function loadDepartments() {
+    const res = await fetch("/employees/departments");
+    const data = await res.json();
+
+    const select = document.getElementById("departmentFilter");
+    select.innerHTML = `<option value="">All</option>`;
+
+    // Assuming you have a /departments API, but using simple iteration for now.
+    // NOTE: This API endpoint is not visible in routers.py, but is kept for future expansion.
+    if (data.departments) { 
+        data.departments.forEach(dep => {
+            select.innerHTML += `<option value="${dep}">${dep}</option>`;
+        });
+    }
+}
+
+// MAIN FUNCTION — LOAD EMPLOYEES
+async function loadEmployees() {
+    const search = document.getElementById("searchInput").value;
+    const dep = document.getElementById("departmentFilter").value;
+
+    const res = await fetch(
+        // FIX: Corrected parameters to match backend (sort_by and limit)
+        `/employees?search=${search}&department=${dep}&sort_by=${sortBy}&order=${sortOrder}&page=${page}&limit=${limit}`
+    );
+
+    const data = await res.json();
+
+    const body = document.getElementById("employeeBody");
+    body.innerHTML = "";
+
+    data.data.forEach(emp => {
+        body.innerHTML += `
+            <tr>
+                <td>${emp.id}</td>
+                <td>${emp.name}</td>
+                <td>${emp.age}</td>
+                <td>${emp.department}</td>
+                <td>
+                    <button onclick="editEmployee(${emp.id})">Edit</button>
+                    <button onclick="deleteEmployee(${emp.id})">Delete</button>
+                </td>
+            </tr>
+        `;
+    });
+
+    // FIX 1: Correctly use the 'pages' key from the backend JSON response
+    loadPagination(data.pages); 
+    
+    // FIX 3: Update the sorting arrows after the table loads
+    updateHeaderArrows(); 
+}
+
+
+// PAGINATION BUTTONS
+function loadPagination(totalPages) {
+    const div = document.getElementById("pagination");
+    div.innerHTML = "";
+
+    // Show up to 10 page buttons for usability
+    const startPage = Math.max(1, page - 4);
+    const endPage = Math.min(totalPages, page + 5);
+
+    for (let i = startPage; i <= endPage; i++) {
+        const activeClass = i === page ? 'style="font-weight: bold; background-color: #ddd;"' : '';
+        div.innerHTML += `
+            <button ${activeClass} onclick="setPage(${i})">${i}</button>
+        `;
+    }
+}
+
+function setPage(p) {
+    page = p;
+    loadEmployees();
+}
+
+
+// FIX 2: GET EMPLOYEE BY ID FUNCTION
+async function getEmployeeByID() {
+    const id = document.getElementById("idSearchInput").value;
+    const resultDiv = document.getElementById("idSearchResult");
+    resultDiv.innerHTML = "Searching...";
+
+    if (!id) {
+        resultDiv.innerHTML = "<strong>Error:</strong> Please enter an ID.";
+        return;
+    }
+
+    const res = await fetch(`/employees/${id}`);
+    const data = await res.json();
+
+    if (res.ok) {
+        resultDiv.innerHTML = `
+            <strong>Employee Found:</strong>
+            <ul>
+                <li><strong>ID:</strong> ${data.id}</li>
+                <li><strong>Name:</strong> ${data.name}</li>
+                <li><strong>Age:</strong> ${data.age}</li>
+                <li><strong>Department:</strong> ${data.department}</li>
+            </ul>
+        `;
+    } else {
+        resultDiv.innerHTML = `<strong>Error:</strong> ${data.error || 'Employee not found (404)'}`;
+    }
+}
+
+
+// DELETE EMPLOYEE
+async function deleteEmployee(id) {
+    if (!confirm("Delete employee?")) return;
+
+    const res = await fetch(`/employees/${id}`, {
+        method: "DELETE"
+    });
+
+    if (res.ok) {
+        alert("Deleted");
+        loadEmployees();
+    } else {
+        alert("Delete failed");
+    }
+}
+
+
+// EDIT EMPLOYEE
+async function editEmployee(id) {
+    const res = await fetch(`/employees/${id}`);
+    const emp = await res.json();
+
+    const newName = prompt("Enter name:", emp.name);
+    const newAge = prompt("Enter age:", emp.age);
+    const newDept = prompt("Enter department:", emp.department);
+
+    if (!newName || !newAge || !newDept) {
+        alert("All fields required");
+        return;
+    }
+
+    const updateRes = await fetch(`/employees/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            name: newName,
+            age: parseInt(newAge),
+            department: newDept
+        })
+    });
+
+    if (updateRes.ok) {
+        alert("Updated");
+        loadEmployees();
+    } else {
+        alert("Update failed");
+    }
+}
+
+
+// ADD EMPLOYEE
+async function addEmployee() {
+    const name = document.getElementById("newName").value;
+    const age = document.getElementById("newAge").value;
+    const dept = document.getElementById("newDept").value;
+
+    if (!name || !age || !dept) {
+        alert("All fields required");
+        return;
+    }
+
+    const res = await fetch("/employees", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            name: name,
+            age: parseInt(age),
+            department: dept
+        })
+    });
+
+    if (res.ok) {
+        alert("Added");
+        document.getElementById("newName").value = "";
+        document.getElementById("newAge").value = "";
+        document.getElementById("newDept").value = "";
+        loadEmployees();
+    } else {
+        alert("Add failed");
+    }
+}
+
+
+// INITIAL LOAD
+loadDepartments();
+loadEmployees();
+
+</script>
+
+</body>
+</html>
