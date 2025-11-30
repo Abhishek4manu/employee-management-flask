@@ -1,0 +1,8 @@
+Flask
+Flask-SQLAlchemy
+Flask-Migrate
+PyJWT
+marshmallow
+Werkzeug
+python-dotenv
+gunicorn

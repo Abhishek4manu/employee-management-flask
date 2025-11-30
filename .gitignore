@@ -1,0 +1,18 @@
+# Bytecode
+__pycache__/
+*.pyc
+
+# Virtual environment
+venv/
+.env
+
+# DB files
+employees.db
+instance/
+
+# Migrations cache
+.migrations/
+migrations/versions/*.py
+
+# System files
+.DS_Store
