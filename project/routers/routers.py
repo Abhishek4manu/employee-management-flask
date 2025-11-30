@@ -25,6 +25,10 @@ def redact_salary(emp_dict, current_user):
 # ----------------------------------------
 # GET ALL (search + filter + sort + pagination)
 # ----------------------------------------
+@employees_bp.get("/")
+def home():
+    return jsonify({"message": "Employee API is running"}), 200
+
 @employees_bp.get("")
 @token_required
 def get_employees(current_user):
