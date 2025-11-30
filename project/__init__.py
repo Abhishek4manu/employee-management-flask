@@ -40,3 +40,5 @@ def create_app():
     app.register_blueprint(dashboard_bp, url_prefix="/anal")
 
     return app
+
+app = create_app()
