@@ -21,14 +21,6 @@ def redact_salary(emp_dict, current_user):
         emp_dict.pop("salary", None)
     return emp_dict
 
-
-# ----------------------------------------
-# GET ALL (search + filter + sort + pagination)
-# ----------------------------------------
-@employees_bp.get("/")
-def home():
-    return jsonify({"message": "Employee API is running"}), 200
-
 @employees_bp.get("")
 @token_required
 def get_employees(current_user):
@@ -205,9 +197,3 @@ def delete_employee(current_user, emp_id):
     return jsonify({"message": "Employee deleted"}), 200
 
 
-# ----------------------------------------
-# HTML VIEW (optional)
-# ----------------------------------------
-@employees_bp.get("/")
-def home():
-    return render_template("employee.html")
