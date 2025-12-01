@@ -7,7 +7,9 @@ import datetime
 
 auth_bp = Blueprint("auth_bp", __name__)
 
-SECRET_KEY = "Boombaclaut"
+import os
+SECRET_KEY = os.environ.get("SECRET_KEY")
+
 
 # -----------------------------
 # REGISTER
