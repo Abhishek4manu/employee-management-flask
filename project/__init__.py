@@ -37,7 +37,14 @@ def create_app():
     app.register_blueprint(log_bp, url_prefix="/admin")
 
     from project.routers.table_details import dashboard_bp
-    app.register_blueprint(dashboard_bp, url_prefix="/anal")
+    app.register_blueprint(dashboard_bp, url_prefix="/analysis")
+
+    from project.models.user import User
+    from project.models.employee import Employee
+
+    with app.app_context():
+        db.create_all()
+
 
     return app
 
