@@ -9,21 +9,35 @@ migrate = None
 def create_app():
     app = Flask(__name__)
 
-    BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-    DB_PATH = os.path.join(BASE_DIR, "..", "employees.db")
+    # PRIORITY: use PostgreSQL if DATABASE_URL exists
+    database_url = os.getenv("DATABASE_URL")
 
-    app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{DB_PATH}"
+    if database_url:
+        # Render gives DATABASE_URL starting with "postgres://"
+        # SQLAlchemy requires "postgresql://"
+        if database_url.startswith("postgres://"):
+            database_url = database_url.replace("postgres://", "postgresql://", 1)
+
+        app.config["SQLALCHEMY_DATABASE_URI"] = database_url
+    else:
+        # fallback - local sqlite
+        BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+        DB_PATH = os.path.join(BASE_DIR, "..", "employees.db")
+        app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{DB_PATH}"
+
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+    app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev")
 
     db.init_app(app)
-    # Import all models so Alembic can detect them
+
+    # import models so Alembic can detect them
     from project.models.employee import Employee
     from project.models.user import User
 
     global migrate
     migrate = Migrate(app, db)
 
-    # Import and register blueprints
+    # register routes
     from project.routers.routers import employees_bp
     app.register_blueprint(employees_bp, url_prefix="/employees")
 
@@ -39,12 +53,9 @@ def create_app():
     from project.routers.table_details import dashboard_bp
     app.register_blueprint(dashboard_bp, url_prefix="/analysis")
 
-    from project.models.user import User
-    from project.models.employee import Employee
-
+    # only for first deploy — auto create tables
     with app.app_context():
         db.create_all()
-
 
     return app
 
